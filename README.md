@@ -89,6 +89,43 @@ full-screen exclusive game the way an in-game overlay (Discord's, Nvidia's)
 does — alt-tab or run the game in borderless-windowed mode if you want both
 visible at once.
 
+## Analyzing your open positions
+
+```bash
+python -m src.positions --config config.yaml
+```
+
+For every position currently on your Kalshi account, this prints: the
+market, which side you're on, your exposure, and its current odds of
+winning — using ESPN's live win-probability while the game is in
+progress, the actual final score if the game's already over (Kalshi
+settlement can lag the final score), a scheduled kickoff time if it
+hasn't started yet, and the market's own implied price for anything
+outside a mapped sport. It finishes with the combined probability of
+every listed position winning, flagged if two positions share a game
+(their outcomes aren't independent, so multiplying probabilities
+overstates/understates the real number).
+
+This needs a Kalshi API key (see below) — `/portfolio/positions` is
+authenticated-only, unlike the rest of this bot.
+
+**On the position schema:** this was built without a live Kalshi account
+to test against, and this sandbox couldn't reach docs.kalshi.com to
+confirm the current response shape first-hand — the field names
+(`position_fp`, `market_exposure_dollars`, ...) come from Kalshi's
+published API reference via search, with a fallback to older-style field
+names in case your account gets served a different shape. Run once with
+`--show-raw` to print one raw position's JSON before it's parsed, and
+sanity-check it against the table underneath:
+
+```bash
+python -m src.positions --config config.yaml --show-raw
+```
+
+If the parsed side/quantity/exposure look wrong compared to the raw JSON,
+that raw JSON is exactly what's needed to fix `parse_position()` in
+`src/positions.py`.
+
 ## Getting a Kalshi API key (optional — only needed to show your balance)
 
 Market data needs no login at all. If you also want your live balance and

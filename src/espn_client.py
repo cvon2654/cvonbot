@@ -49,6 +49,7 @@ def scoreboard(sport: str, league: str) -> list[dict]:
             "name": event.get("shortName") or event.get("name"),
             "state": (event.get("status", {}).get("type", {}) or {}).get("state"),  # pre/in/post
             "detail": (event.get("status", {}).get("type", {}) or {}).get("shortDetail"),
+            "start_time_utc": event.get("date"),  # ISO 8601, only meaningful while state == "pre"
             "home_team": (home.get("team") or {}).get("displayName"),
             "home_abbrev": (home.get("team") or {}).get("abbreviation"),
             "home_score": home.get("score"),
