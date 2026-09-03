@@ -1,0 +1,33 @@
+# Copy to config.yaml and edit. config.yaml is gitignored on purpose --
+# it's where your bankroll and risk settings live.
+
+# "sports" (default) = every open Kalshi market whose event category is Sports.
+# Or list specific series tickers, e.g. ["KXNFLGAME", "KXNBAGAME"].
+series_scope: sports
+
+poll_interval_seconds: 30
+
+bankroll_usd: 500
+
+# Suggestions only scale a fraction of full Kelly -- full Kelly is far too
+# aggressive for real money. 0.25 = quarter-Kelly, a common conservative choice.
+kelly_fraction_multiplier: 0.25
+
+# Hard ceiling on any single suggested stake, regardless of what Kelly says.
+max_stake_pct_of_bankroll: 0.03
+
+# Only surface a market when the model-vs-market edge is at least this many
+# percentage points (0.05 = 5 points), to cut down on noise.
+min_edge_to_alert: 0.05
+
+# RSS feeds polled for headlines about the teams/players in tracked games.
+# Add your own -- any standard RSS/Atom feed works.
+news_feeds:
+  - https://www.espn.com/espn/rss/nfl/news
+  - https://www.espn.com/espn/rss/nba/news
+  - https://www.cbssports.com/rss/headlines/nfl/
+  - https://www.cbssports.com/rss/headlines/nba/
+
+# Optional: only set these if you added KALSHI_API_KEY_ID / KALSHI_PRIVATE_KEY_PATH
+# to .env and want your live balance/positions shown alongside the market data.
+show_portfolio: false
