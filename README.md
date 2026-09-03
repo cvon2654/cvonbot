@@ -182,6 +182,14 @@ if anything about their auth flow changes.
   `kalshi_client.py` checks both, dollar fields first, but if Kalshi
   changes this again, "every position shows blank odds" is the symptom
   to look for.
+- **An illiquid market's `yes_ask_dollars` is not a real probability.**
+  Found on real positions: a custom multi-leg market with no one actually
+  offering to sell defaults `yes_ask_dollars` to `"1.0000"` (100%) — a
+  "no quote" placeholder, not a genuine price. `extract_price_cents()`
+  only trusts the ask when `yes_ask_size_fp` shows real size behind it;
+  otherwise it falls back to `last_price_dollars` (the actual last trade),
+  and `is_illiquid()` flags the row so the table says "market (last
+  trade, illiquid)" instead of presenting a stale number as a live quote.
 
 ## Tests
 

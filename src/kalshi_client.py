@@ -135,6 +135,15 @@ def sports_events(client: KalshiClient) -> list[dict]:
     return [e for e in events if (e.get("category") or "").lower() == "sports"]
 
 
+def _to_float(val) -> Optional[float]:
+    if val is None:
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
 def extract_price_cents(market: dict) -> Optional[float]:
     """A market's current 'yes' price, in cents (0-100), from whichever field shape
     this account's API responses actually use.
@@ -143,19 +152,34 @@ def extract_price_cents(market: dict) -> Optional[float]:
     dollar-denominated string fields (yes_ask_dollars="0.5500", not yes_ask=55) --
     the reverse of what older public docs/examples show. Both are checked, dollar
     fields first, since a live account is the more trustworthy source here.
+
+    yes_ask_dollars is only trusted when there's real size behind it
+    (yes_ask_size_fp > 0). Found the hard way on illiquid custom multi-leg
+    markets: with no one actually offering to sell, yes_ask_dollars defaults
+    to "1.0000" (100%) -- a "no real quote" placeholder, not a probability.
+    In that case last_price_dollars (the actual last executed trade) is the
+    only real signal and is used instead.
     """
-    for key in ("yes_ask_dollars", "last_price_dollars"):
-        val = market.get(key)
-        if val is not None:
-            try:
-                return float(val) * 100
-            except (TypeError, ValueError):
-                continue
+    ask = _to_float(market.get("yes_ask_dollars"))
+    ask_size = _to_float(market.get("yes_ask_size_fp"))
+    if ask is not None and (ask_size is None or ask_size > 0):
+        return ask * 100
+
+    last = _to_float(market.get("last_price_dollars"))
+    if last is not None:
+        return last * 100
+
     for key in ("yes_ask", "last_price"):
-        val = market.get(key)
+        val = _to_float(market.get(key))
         if val is not None:
-            try:
-                return float(val)
-            except (TypeError, ValueError):
-                continue
+            return val
     return None
+
+
+def is_illiquid(market: dict) -> bool:
+    """True when the market has no real two-sided quote (ask/bid size both zero) --
+    the case where extract_price_cents() falls back to last-trade price instead of
+    a live ask, so callers can flag the number as a stale/illustrative estimate."""
+    ask_size = _to_float(market.get("yes_ask_size_fp"))
+    bid_size = _to_float(market.get("yes_bid_size_fp"))
+    return ask_size == 0 and bid_size == 0

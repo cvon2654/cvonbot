@@ -39,7 +39,7 @@ from rich.console import Console
 from rich.table import Table
 
 from . import espn_client
-from .kalshi_client import KalshiAuth, KalshiClient, KalshiError, extract_price_cents
+from .kalshi_client import KalshiAuth, KalshiClient, KalshiError, extract_price_cents, is_illiquid
 from .main import market_title, match_team
 from .sizing import implied_probability
 
@@ -104,7 +104,7 @@ def enrich_with_market(client: KalshiClient, pos: Position) -> None:
         market_yes_prob = implied_probability(price)
         pos.win_prob = market_yes_prob if pos.side == "YES" else (1 - market_yes_prob)
     pos.status = "no-model"
-    pos.prob_source = "market"
+    pos.prob_source = "market (last trade, illiquid)" if is_illiquid(market) else "market"
 
 
 def enrich_with_espn(pos: Position, games_by_league: dict) -> None:
