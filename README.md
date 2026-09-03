@@ -57,6 +57,30 @@ By default `KALSHI_ENV` is `demo`, pointed at Kalshi's paper-trading
 environment — safe to leave running without touching real markets, though
 again, nothing here ever submits an order regardless of environment.
 
+## Floating overlay (Windows)
+
+Instead of (or alongside) the terminal dashboard, `src/overlay.py` is a
+small always-on-top window — drag it by the title bar, resize from the
+bottom-right corner, close with the ✕. It shows the same live games, top
+edges, and headlines, refreshed on the same `poll_interval_seconds`.
+
+```bash
+python -m src.overlay --config config.yaml
+```
+
+It uses Tk, which ships with the official [python.org](https://www.python.org/downloads/windows/)
+Windows installer (check "tcl/tk and IDLE" during setup — it's on by
+default). If you installed Python from the Microsoft Store instead and
+`import tkinter` fails, that's why; reinstall from python.org.
+
+The window is always-on-top but **not** click-through — clicks on it stay
+on it, so it won't fire mouse events at whatever's underneath. It's a
+plain window, not a native game/stream overlay hooked into DirectX/OpenGL,
+so it sits *above* other windows on the desktop but won't render inside a
+full-screen exclusive game the way an in-game overlay (Discord's, Nvidia's)
+does — alt-tab or run the game in borderless-windowed mode if you want both
+visible at once.
+
 ## Getting a Kalshi API key (optional — only needed to show your balance)
 
 Market data needs no login at all. If you also want your live balance and
