@@ -133,3 +133,29 @@ def sports_events(client: KalshiClient) -> list[dict]:
     """Every open event Kalshi categorizes as Sports, nested markets included."""
     events = client.get_events(status="open", with_nested_markets=True)
     return [e for e in events if (e.get("category") or "").lower() == "sports"]
+
+
+def extract_price_cents(market: dict) -> Optional[float]:
+    """A market's current 'yes' price, in cents (0-100), from whichever field shape
+    this account's API responses actually use.
+
+    Confirmed against a real account: current Kalshi responses price markets in
+    dollar-denominated string fields (yes_ask_dollars="0.5500", not yes_ask=55) --
+    the reverse of what older public docs/examples show. Both are checked, dollar
+    fields first, since a live account is the more trustworthy source here.
+    """
+    for key in ("yes_ask_dollars", "last_price_dollars"):
+        val = market.get(key)
+        if val is not None:
+            try:
+                return float(val) * 100
+            except (TypeError, ValueError):
+                continue
+    for key in ("yes_ask", "last_price"):
+        val = market.get(key)
+        if val is not None:
+            try:
+                return float(val)
+            except (TypeError, ValueError):
+                continue
+    return None

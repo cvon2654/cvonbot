@@ -30,13 +30,22 @@ with no model comparison, instead of being silently dropped.
 
 ### On "parlays"
 
-Kalshi doesn't have parlays — every market is its own single yes/no
-contract, settled independently. `src/combo.py` lets you evaluate a
-bundle of legs as if you'd bought each one separately, but it's only
-correct when the legs are truly independent. Sports outcomes from the
-same game usually aren't, so the tool actively flags legs that share an
-event and labels the combined number as illustrative rather than pretending
-it's a real product Kalshi sells you.
+**Correction from an earlier version of this README:** Kalshi does have a
+real multi-leg product — "Multivariate Event" markets (tickers like
+`KXMVECROSSCATEGORY-...`), which bundle several picks (`mve_selected_legs`
+in the raw market data) into one all-or-nothing contract that settles
+atomically, closer to an actual sportsbook parlay than anything this repo
+builds itself. `src/positions.py` recognizes these (shown as "Multi-pick
+bundle (N legs)" rather than their real title, which is a comma-joined
+list of every leg and can run to dozens of names) and prices them like
+any other position.
+
+Separately, `src/combo.py` still exists for evaluating a *hypothetical*
+bundle of legs bought one-by-one on your own — useful for sanity-checking
+an idea before building it as a real Kalshi multivariate event, but only
+mathematically correct when the legs are truly independent. Sports
+outcomes from the same game usually aren't, so it actively flags legs that
+share an event rather than silently overstating the odds.
 
 ## Setup
 
@@ -166,6 +175,13 @@ if anything about their auth flow changes.
   It's a legitimate, named, independent data source to compare the market
   against — it is not a guarantee of anything, and it can be wrong, most
   often early in a game when little has happened yet.
+- **Market pricing field names were wrong until verified against a real
+  account.** Public API examples document integer-cent fields (`yes_ask`,
+  `last_price`); a live account actually returns dollar-string fields
+  (`yes_ask_dollars`, `last_price_dollars`). `extract_price_cents()` in
+  `kalshi_client.py` checks both, dollar fields first, but if Kalshi
+  changes this again, "every position shows blank odds" is the symptom
+  to look for.
 
 ## Tests
 

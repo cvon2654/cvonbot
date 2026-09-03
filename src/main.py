@@ -20,7 +20,7 @@ from rich.live import Live
 
 from . import espn_client, news_aggregator
 from .dashboard import render
-from .kalshi_client import KalshiAuth, KalshiClient, KalshiError, sports_events
+from .kalshi_client import KalshiAuth, KalshiClient, KalshiError, extract_price_cents, sports_events
 from .sizing import implied_probability, suggest_stake
 
 DEFAULT_SERIES = list(espn_client.SERIES_TO_ESPN.keys())
@@ -55,6 +55,16 @@ def match_team(text: str, team_name: str, team_abbrev: str) -> bool:
     return (team_name or "").lower() in text_l or (team_abbrev or "").lower() in text_l.split()
 
 
+def market_title(market: dict) -> str:
+    """A market's display title -- collapsed to a short summary for Kalshi's
+    multivariate/combo markets (mve_selected_legs), whose real title is a
+    comma-joined list of every leg and can run to dozens of names."""
+    legs = market.get("mve_selected_legs")
+    if legs:
+        return f"Multi-pick bundle ({len(legs)} legs)"
+    return market.get("yes_sub_title") or market.get("title") or market.get("ticker")
+
+
 def gather(
     cfg: dict, client: KalshiClient
 ) -> tuple[list[dict], list[dict], list[dict], list[dict], dict | None, list[str]]:
@@ -73,9 +83,9 @@ def gather(
         for market in event.get("markets", []):
             other_markets.append({
                 "series": event.get("series_ticker"),
-                "title": market.get("yes_sub_title") or market.get("title") or market.get("ticker"),
+                "title": market_title(market),
                 "ticker": market.get("ticker"),
-                "price_cents": market.get("yes_ask") or market.get("last_price"),
+                "price_cents": extract_price_cents(market),
             })
 
     espn_games_by_league: dict[tuple[str, str], list[dict]] = {}
@@ -93,7 +103,7 @@ def gather(
         games = espn_games_by_league.get((sport, league), [])
 
         for market in event.get("markets", []):
-            title = market.get("yes_sub_title") or market.get("title") or market.get("ticker")
+            title = market_title(market)
             game = next(
                 (g for g in games if match_team(title, g["home_team"], g["home_abbrev"])
                  or match_team(title, g["away_team"], g["away_abbrev"])),
@@ -111,7 +121,7 @@ def gather(
             is_home_market = match_team(title, game["home_team"], game["home_abbrev"])
             model_prob = wp["home_win_prob"] if is_home_market else wp["away_win_prob"]
 
-            price = market.get("yes_ask") or market.get("last_price")
+            price = extract_price_cents(market)
             if price is None:
                 warnings.append(f"{market.get('ticker')}: no price available, skipped")
                 continue

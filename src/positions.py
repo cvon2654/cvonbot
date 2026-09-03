@@ -39,8 +39,8 @@ from rich.console import Console
 from rich.table import Table
 
 from . import espn_client
-from .kalshi_client import KalshiAuth, KalshiClient, KalshiError
-from .main import match_team
+from .kalshi_client import KalshiAuth, KalshiClient, KalshiError, extract_price_cents
+from .main import market_title, match_team
 from .sizing import implied_probability
 
 
@@ -98,8 +98,8 @@ def enrich_with_market(client: KalshiClient, pos: Position) -> None:
         pos.detail = f"could not load market: {exc}"
         return
 
-    pos.title = market.get("yes_sub_title") or market.get("title") or pos.ticker
-    price = market.get("yes_ask") or market.get("last_price")
+    pos.title = market_title(market)
+    price = extract_price_cents(market)
     if price is not None:
         market_yes_prob = implied_probability(price)
         pos.win_prob = market_yes_prob if pos.side == "YES" else (1 - market_yes_prob)
