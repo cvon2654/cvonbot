@@ -127,6 +127,7 @@ class OverlayApp:
 
         self._section("Live games", "games_frame")
         self._section("Top edges", "edges_frame")
+        self._section("Other sports markets", "other_frame")
         self._section("Headlines", "news_frame")
 
         # Resize grip, bottom-right corner. Cursor name differs by platform --
@@ -187,7 +188,7 @@ class OverlayApp:
                         justify="left", anchor="w", wraplength=WIDTH_DEFAULT - 40)
         lbl.pack(fill="x", anchor="w", pady=1)
 
-    def _render(self, games: list, edges: list, headlines: list, portfolio, warnings: list) -> None:
+    def _render(self, games: list, edges: list, other_markets: list, headlines: list, portfolio, warnings: list) -> None:
         self._clear(self.games_frame)
         if not games:
             self._row(self.games_frame, "No live games in scope.", FG_DIM)
@@ -209,6 +210,14 @@ class OverlayApp:
                 color,
             )
 
+        self._clear(self.other_frame)
+        if not other_markets:
+            self._row(self.other_frame, "None open right now.", FG_DIM)
+        for m in other_markets[:8]:
+            price = m["price_cents"]
+            price_txt = f"{price}¢" if price is not None else "-"
+            self._row(self.other_frame, f"[{m['series'] or '?'}] {m['title'][:30]}  {price_txt}", FG_DIM)
+
         self._clear(self.news_frame)
         if not headlines:
             self._row(self.news_frame, "No related headlines yet.", FG_DIM)
@@ -225,8 +234,8 @@ class OverlayApp:
             while True:
                 kind, payload = self.data_queue.get_nowait()
                 if kind == "ok":
-                    games, edges, headlines, portfolio, warnings = payload
-                    self._render(games, edges, headlines, portfolio, warnings)
+                    games, edges, other_markets, headlines, portfolio, warnings = payload
+                    self._render(games, edges, other_markets, headlines, portfolio, warnings)
                 else:
                     self.status_label.configure(text="error", fg=RED)
         except queue.Empty:

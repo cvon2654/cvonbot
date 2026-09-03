@@ -10,7 +10,10 @@ from rich.table import Table
 from rich.text import Text
 
 
-def render(games: list[dict], edges: list[dict], headlines: list[dict], portfolio: dict | None) -> Group:
+def render(
+    games: list[dict], edges: list[dict], other_markets: list[dict],
+    headlines: list[dict], portfolio: dict | None,
+) -> Group:
     parts = []
 
     if portfolio is not None:
@@ -44,6 +47,16 @@ def render(games: list[dict], edges: list[dict], headlines: list[dict], portfoli
             f"${stake.suggested_usd:,.2f}" if stake.suggested_usd > 0 else "-",
         )
     parts.append(edges_table if edges else Text("No markets clear your min-edge threshold yet.", style="dim"))
+
+    if other_markets:
+        other_table = Table(title="Other Kalshi sports markets (no live-score model for these yet)", expand=True)
+        other_table.add_column("Series")
+        other_table.add_column("Market")
+        other_table.add_column("Yes price", justify="right")
+        for m in other_markets[:20]:
+            price = m["price_cents"]
+            other_table.add_row(m["series"] or "-", m["title"], f"{price}¢" if price is not None else "-")
+        parts.append(other_table)
 
     if headlines:
         news_lines = [f"[dim]{h['source']}[/dim]  {h['title']}" for h in headlines[:8]]

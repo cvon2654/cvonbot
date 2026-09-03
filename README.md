@@ -18,7 +18,15 @@ hand in the Kalshi app.
 | Market prices | Kalshi's public `/markets` and `/events` endpoints |
 | "Model" win probability | ESPN's own published win-probability estimate for in-progress games |
 | Edge & suggested stake | Your model-vs-market gap run through fractional Kelly, hard-capped |
+| Other sports markets | Every other open Kalshi sports market (soccer, tennis, golf, MMA, futures, ...) listed with its price, with no edge computed |
 | Headlines | RSS feeds you configure (ESPN, CBS Sports, etc. by default) |
+
+`series_scope: sports` (the default) pulls **every** open Kalshi event
+categorized as a sport — not just NFL/NBA/MLB/NHL/college. Full edge
+analysis (model probability vs. price, Kelly sizing) only runs for the
+leagues `src/espn_client.py` has a live-score mapping for; every other
+sport still shows up, just in the plainer "Other sports markets" list
+with no model comparison, instead of being silently dropped.
 
 ### On "parlays"
 

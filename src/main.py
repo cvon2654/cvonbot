@@ -42,13 +42,12 @@ def build_client(cfg: dict) -> KalshiClient:
 
 
 def resolve_series(cfg: dict, client: KalshiClient) -> list[dict]:
-    """Returns Kalshi events (with nested markets) in scope, tagged with an ESPN mapping."""
+    """Every open Kalshi event in scope -- every sport Kalshi lists, not just the ones
+    we have an ESPN score/win-probability mapping for. gather() below splits them."""
     scope = cfg.get("series_scope", "sports")
     if scope == "sports":
-        events = sports_events(client)
-    else:
-        events = [e for e in client.get_events(status="open") if e.get("series_ticker") in scope]
-    return [e for e in events if e.get("series_ticker") in espn_client.SERIES_TO_ESPN]
+        return sports_events(client)
+    return [e for e in client.get_events(status="open") if e.get("series_ticker") in scope]
 
 
 def match_team(text: str, team_name: str, team_abbrev: str) -> bool:
@@ -56,20 +55,39 @@ def match_team(text: str, team_name: str, team_abbrev: str) -> bool:
     return (team_name or "").lower() in text_l or (team_abbrev or "").lower() in text_l.split()
 
 
-def gather(cfg: dict, client: KalshiClient) -> tuple[list[dict], list[dict], list[dict], dict | None, list[str]]:
+def gather(
+    cfg: dict, client: KalshiClient
+) -> tuple[list[dict], list[dict], list[dict], list[dict], dict | None, list[str]]:
     warnings: list[str] = []
     events = resolve_series(cfg, client)
 
+    # Only some sports have a live-score/win-probability source wired up (ESPN, for the
+    # leagues in SERIES_TO_ESPN). Everything else Kalshi lists (soccer, tennis, golf,
+    # MMA, season-long futures, ...) still shows up -- just as a plain market listing,
+    # with no model comparison, instead of being silently dropped.
+    mapped_events = [e for e in events if e.get("series_ticker") in espn_client.SERIES_TO_ESPN]
+    unmapped_events = [e for e in events if e.get("series_ticker") not in espn_client.SERIES_TO_ESPN]
+
+    other_markets: list[dict] = []
+    for event in unmapped_events:
+        for market in event.get("markets", []):
+            other_markets.append({
+                "series": event.get("series_ticker"),
+                "title": market.get("yes_sub_title") or market.get("title") or market.get("ticker"),
+                "ticker": market.get("ticker"),
+                "price_cents": market.get("yes_ask") or market.get("last_price"),
+            })
+
     espn_games_by_league: dict[tuple[str, str], list[dict]] = {}
     all_games: list[dict] = []
-    for series_ticker in {e["series_ticker"] for e in events}:
+    for series_ticker in {e["series_ticker"] for e in mapped_events}:
         sport, league = espn_client.SERIES_TO_ESPN[series_ticker]
         games = espn_client.scoreboard(sport, league)
         espn_games_by_league[(sport, league)] = games
         all_games.extend(games)
 
     edges = []
-    for event in events:
+    for event in mapped_events:
         series_ticker = event["series_ticker"]
         sport, league = espn_client.SERIES_TO_ESPN[series_ticker]
         games = espn_games_by_league.get((sport, league), [])
@@ -131,7 +149,7 @@ def gather(cfg: dict, client: KalshiClient) -> tuple[list[dict], list[dict], lis
         except KalshiError as exc:
             warnings.append(f"portfolio fetch failed: {exc}")
 
-    return all_games, edges, relevant_headlines, portfolio, warnings
+    return all_games, edges, other_markets, relevant_headlines, portfolio, warnings
 
 
 def main() -> None:
@@ -151,8 +169,8 @@ def main() -> None:
     with Live(refresh_per_second=1, screen=False) as live:
         while True:
             try:
-                games, edges, headlines, portfolio, warnings = gather(cfg, client)
-                live.update(render(games, edges, headlines, portfolio))
+                games, edges, other_markets, headlines, portfolio, warnings = gather(cfg, client)
+                live.update(render(games, edges, other_markets, headlines, portfolio))
                 for w in warnings:
                     live.console.log(f"[yellow]warning:[/yellow] {w}")
             except KalshiError as exc:
